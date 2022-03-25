@@ -23,10 +23,12 @@ def read_csv(file,encoding= "ISO-8859-1",delimiter=";",dateformat="%d-%m-%Y"):
         cols=list(lines[0].strip().split(delimiter))
         sz_cols=len(cols)
         for i in range(1,len(lines)):
-            stg={}
             d=list(lines[i].split(delimiter))
-            for y in range(sz_cols):
-                stg[cols[y]]=date_control(d[y],dateformat=dateformat)
+            stg = {
+                cols[y]: date_control(d[y], dateformat=dateformat)
+                for y in range(sz_cols)
+            }
+
             cn.append(stg)
     return cn
 def remove_duplicates(cn):
@@ -42,22 +44,12 @@ def merge_list(df1,df2,remove_duplicates=True):
     df1_cols=list(df1[0].keys())
     df2_cols=list(df2[0].keys())
     for i in range(sz_df1):
-        stg={}
-        for y in cols_list:
-            if y in df1_cols:
-                stg[y]=df1[i][y]
-            else:
-                stg[y]=None
+        stg = {y: df1[i][y] if y in df1_cols else None for y in cols_list}
         cn.append(stg)
     for i in range(sz_df2):
-        stg={}
-        for y in cols_list:
-            if y in df2_cols:
-                stg[y]=df2[i][y]
-            else:
-                stg[y]=None
+        stg = {y: df2[i][y] if y in df2_cols else None for y in cols_list}
         cn.append(stg)   
-        
+
     if remove_duplicates:
         cn=remove_duplicates(cn)
     return cn
@@ -79,13 +71,12 @@ def change_column_name(ls,old_column,new_column):
     return cn
         
 def change_float(val,decimal="."):
-    if type(val)==str:
-        if val.count(",")>0:
-            val=str(val).replace(",",".")
-            try:
-                return float(val)
-            except:
-                return val
+    if type(val) == str and val.count(",") > 0:
+        val=str(val).replace(",",".")
+        try:
+            return float(val)
+        except:
+            return val
     return val
 
 def columns_sum(ls,cols_list,cols_multip,new_column,decimal="."):
@@ -95,13 +86,15 @@ def columns_sum(ls,cols_list,cols_multip,new_column,decimal="."):
     size_cl=len(cols_list)
     for i in range(size):
         d=ls[i]
-        stg={}
-        for y in cols:
-            stg[y]=d[y]
-        u=0
-        for k in range(size_cl):
-            
-            u += (float(change_float(d[cols_list[k]])) * float(change_float(cols_multip[k])))
-        stg[new_column]=u        
+        stg = {y: d[y] for y in cols}
+        u = sum(
+            (
+                float(change_float(d[cols_list[k]]))
+                * float(change_float(cols_multip[k]))
+            )
+            for k in range(size_cl)
+        )
+
+        stg[new_column]=u
         cn.append(stg)
     return cn
