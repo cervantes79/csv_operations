@@ -1,107 +1,46 @@
 import os
+from datetime import datetime
+from functools import reduce
 
-def date_control(val,dateformat="%d-%m-%Y"):
-    if type(val)==str:
-        try:
-            return datetime.strptime(val, dateformat)
-        except:
-            return val
+# Utilizing higher-order functions for side-effect free programming
+def date_control(val, dateformat="%d-%m-%Y"):
+    try:
+        return datetime.strptime(val, dateformat) if isinstance(val, str) else val
+    except ValueError:
+        return val
 
-def read_csv(file,encoding= "ISO-8859-1",delimiter=";",dateformat="%d-%m-%Y"):
-    cn=[]
-
-    if not os.path.isfile(file):
-        print("File does not exist")
-        return cn
-
-    if not str(file).endswith(".csv"):
-        print("File extension is not CSV")
-        return cn
-
-    with open(file,"r",encoding= encoding) as f:
-        lines=f.readlines()
-        cols=list(lines[0].strip().split(delimiter))
-        sz_cols=len(cols)
-        for i in range(1,len(lines)):
-            stg={}
-            d=list(lines[i].split(delimiter))
-            for y in range(sz_cols):
-                stg[cols[y]]=date_control(d[y],dateformat=dateformat)
-            cn.append(stg)
-    return cn
-def remove_duplicates(cn):
-    stg=[]
-    for i in cn:
-        if stg.count(i)==0:
-            stg.append(i)
-    return stg
-def merge_list(df1,df2,remove_duplicates=True):
-    cn=[]
-    cols_list=remove_duplicates(list(df1[0].keys()) + list(df2[0].keys()) )
-    sz_df1=len(df1)
-    df1_cols=list(df1[0].keys())
-    df2_cols=list(df2[0].keys())
-    for i in range(sz_df1):
-        stg={}
-        for y in cols_list:
-            if y in df1_cols:
-                stg[y]=df1[i][y]
-            else:
-                stg[y]=None
-        cn.append(stg)
-    for i in range(sz_df2):
-        stg={}
-        for y in cols_list:
-            if y in df2_cols:
-                stg[y]=df2[i][y]
-            else:
-                stg[y]=None
-        cn.append(stg)   
-        
-    if remove_duplicates:
-        cn=remove_duplicates(cn)
-    return cn
+def read_csv(file_path, encoding="ISO-8859-1", delimiter=";", dateformat="%d-%m-%Y"):
+    if not (os.path.isfile(file_path) and file_path.endswith(".csv")):
+        print("File does not exist or is not a CSV")
+        return []
     
-def change_column_name(ls,old_column,new_column):
-    cn=[]
-    size=len(ls)
-    cols=list(ls[0].keys())
-    for i in range(size):
-        d=ls[i]
-        stg={}
-        for y in cols:
-            if y==old_column:
-                stg[new_column]=d[y]
-            else:
-                stg[y]=d[y]
-                
-        cn.append(stg)
-    return cn
-        
-def change_float(val,decimal="."):
-    if type(val)==str:
-        if val.count(",")>0:
-            val=str(val).replace(",",".")
-            try:
-                return float(val)
-            except:
-                return val
-    return val
+    with open(file_path, "r", encoding=encoding) as f:
+        lines = f.readlines()
+    headers = lines[0].strip().split(delimiter)
+    
+    return [
+        {headers[i]: date_control(col, dateformat) for i, col in enumerate(row.split(delimiter))}
+        for row in lines[1:]
+    ]
 
-def columns_sum(ls,cols_list,cols_multip,new_column,decimal="."):
-    cn=[]
-    size=len(ls)
-    cols=list(ls[0].keys())
-    size_cl=len(cols_list)
-    for i in range(size):
-        d=ls[i]
-        stg={}
-        for y in cols:
-            stg[y]=d[y]
-        u=0
-        for k in range(size_cl):
-            
-            u += (float(change_float(d[cols_list[k]])) * float(change_float(cols_multip[k])))
-        stg[new_column]=u        
-        cn.append(stg)
-    return cn
+def remove_duplicates(collection):
+    return reduce(lambda acc, x: acc + [x] if x not in acc else acc, collection, [])
+
+def merge_lists(list1, list2, deduplicate=True):
+    combined = list1 + list2
+    return remove_duplicates(combined) if deduplicate else combined
+
+def change_column_name(data, old_column, new_column):
+    return [
+        {new_column if k == old_column else k: v for k, v in row.items()}
+        for row in data
+    ]
+
+def change_float(val, decimal="."):
+    return float(val.replace(",", decimal)) if isinstance(val, str) and "," in val else val
+
+def column_sum(data, cols_list, cols_multip, new_column):
+    return [
+        {**row, new_column: sum(change_float(row[col]) * cols_multip[i] for i, col in enumerate(cols_list))}
+        for row in data
+    ]
